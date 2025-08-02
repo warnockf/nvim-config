@@ -16,24 +16,53 @@ Plug 'neanias/everforest-nvim', { 'branch': 'main' }
 
 call plug#end()
 
-" nmap <silent> gd <Plug>(coc-definition)
-
 let mapleader = " "
 
-" Find files using Telescope command-line sugar.
+" Ensure that y and x copy to the clipboard, but d does not
+set clipboard=
+
+nnoremap y "+y
+nnoremap x "+x
+nnoremap d "_d
+nnoremap dd "_dd
+
+vnoremap y "+y
+vnoremap x "+x
+vnoremap d "_d
+vnoremap dd "_dd
+
+" Find files using Telescope
 nnoremap <leader>ff <cmd>Telescope find_files<cr>
 nnoremap <leader>fw <cmd>Telescope live_grep<cr>
 nnoremap <leader>fb <cmd>Telescope buffers<cr>
 " nnoremap <leader>fh <cmd>Telescope help_tags<cr>
 nnoremap <leader>e :NERDTreeFocus<CR>
 
+" Move between windows with ctrl + h/j/k/l
 nnoremap <C-h> <C-w>h
 nnoremap <C-j> <C-w>j
 nnoremap <C-k> <C-w>k
 nnoremap <C-l> <C-w>l
 
+" Move the cursor while in insert mode with ctrl + h/j/k/l
+inoremap <C-h> <Left>
+inoremap <C-j> <Down>
+inoremap <C-k> <Up>
+inoremap <C-l> <Right>
+
+" Open terminal with leader + t and exit terminal mode with esc
+nnoremap <leader>t :terminal<CR>
+tnoremap <Esc> <C-\><C-n>
+
+" Delete buffer with leader + x
+" nnoremap <leader>q :bd!<CR>
+
+" Comment out lines with leader + /
 nnoremap <leader>/ :Commentary<CR>
 vnoremap <leader>/ :Commentary<CR>
+
+" Reload config with <leader>r
+nnoremap <leader>r :source $MYVIMRC<CR>
 
 " COC
 inoremap <silent><expr> <TAB>
@@ -54,12 +83,41 @@ else
   inoremap <silent><expr> <c-@> coc#refresh()
 endif
 
+
+function! NextBuffer()
+  let current_buf = bufnr('%')
+  bnext
+  " Skip NERDTree and terminal buffers
+  while (exists('b:NERDTree') && b:NERDTree.isTabTree()) || &buftype == 'terminal'
+    if bufnr('$') == current_buf
+      break
+    endif
+    bnext
+  endwhile
+endfunction
+
+function! PrevBuffer()
+  let current_buf = bufnr('%')
+  bprevious
+  " Skip NERDTree and terminal buffers
+  while (exists('b:NERDTree') && b:NERDTree.isTabTree()) || &buftype == 'terminal'
+    if bufnr('$') == current_buf
+      break
+    endif
+    bprevious
+  endwhile
+endfunction
+
+nnoremap <Tab> :call NextBuffer()<CR>
+nnoremap <S-Tab> :call PrevBuffer()<CR>
+
 " GoTo code navigation
 nmap <silent><nowait> gd <Plug>(coc-definition)
 nmap <silent><nowait> gy <Plug>(coc-type-definition)
 nmap <silent><nowait> gi <Plug>(coc-implementation)
 nmap <silent><nowait> gr <Plug>(coc-references)
 
+" Show line numbers
 set number
 set relativenumber
 
@@ -69,3 +127,60 @@ autocmd VimEnter * NERDTree
 " let g:NERDTreeWinSize = 55
 
 filetype plugin indent on
+
+" Function to check if buffer is NERDTree or terminal
+function! IsSpecialBuffer(bufnr)
+    return getbufvar(a:bufnr, '&filetype') ==# 'nerdtree' || getbufvar(a:bufnr, '&buftype') ==# 'terminal'
+endfunction
+
+" Function to check if buffer is NERDTree or terminal
+function! IsSpecialBuffer(bufnr)
+    return getbufvar(a:bufnr, '&filetype') ==# 'nerdtree' || getbufvar(a:bufnr, '&buftype') ==# 'terminal'
+endfunction
+
+" Function to get next non-special, listed buffer or create a new one
+function! GetNextNonSpecialBuffer()
+    let l:current_buf = bufnr('%')
+    let l:total_buffers = bufnr('$')
+    let l:next_buf = l:current_buf + 1
+
+    " Iterate through buffers starting from the next one
+    while l:next_buf <= l:total_buffers
+        if bufexists(l:next_buf) && buflisted(l:next_buf) && !IsSpecialBuffer(l:next_buf)
+            return l:next_buf
+        endif
+        let l:next_buf += 1
+    endwhile
+
+    " Try from the beginning up to current buffer
+    let l:next_buf = 1
+    while l:next_buf < l:current_buf
+        if bufexists(l:next_buf) && buflisted(l:next_buf) && !IsSpecialBuffer(l:next_buf)
+            return l:next_buf
+        endif
+        let l:next_buf += 1
+    endwhile
+
+    " No suitable buffer found, create a new one
+    execute 'enew'
+    setlocal buflisted
+    return bufnr('%')
+endfunction
+
+" Function to close current window and switch to next non-special buffer
+function! CloseWindowAndSwitch()
+    let l:current_buf = bufnr('%')
+    let l:next_buf = GetNextNonSpecialBuffer()
+    
+    if l:next_buf > 0 && l:next_buf != l:current_buf
+        execute 'buffer' l:next_buf
+        execute 'bdelete!' l:current_buf
+    else
+        execute 'bdelete!' l:current_buf
+    endif
+endfunction
+
+" Map leader + q to close window and switch
+nnoremap <leader>q :call CloseWindowAndSwitch()<CR>
+
+nnoremap <leader>b :enew<CR>:setlocal buflisted<CR>
