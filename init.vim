@@ -29,7 +29,11 @@ nnoremap dd "_dd
 vnoremap y "+y
 vnoremap x "+x
 vnoremap d "_d
-vnoremap dd "_dd
+
+nnoremap p "+p
+nnoremap P "+P
+vnoremap p "+p
+vnoremap P "+P
 
 " Find files using Telescope
 nnoremap <leader>ff <cmd>Telescope find_files<cr>
@@ -108,6 +112,23 @@ function! PrevBuffer()
   endwhile
 endfunction
 
+" Function to sync NERDTree with the current buffer's file
+function! SyncNERDTree()
+    " Only proceed if the current buffer is not NERDTree or terminal
+    if !IsSpecialBuffer(bufnr('%'))
+        " Check if the current buffer has a valid file path
+        if !empty(expand('%:p'))
+            " Check if NERDTree is open
+            if exists('t:NERDTreeBufName') && bufwinnr(t:NERDTreeBufName) != -1
+                " Switch to NERDTree window, find file, and switch back
+                execute 'wincmd p'
+                execute 'NERDTreeFind'
+                wincmd p
+            endif
+        endif
+    endif
+endfunction
+
 nnoremap <Tab> :call NextBuffer()<CR>
 nnoremap <S-Tab> :call PrevBuffer()<CR>
 
@@ -179,6 +200,29 @@ function! CloseWindowAndSwitch()
         execute 'bdelete!' l:current_buf
     endif
 endfunction
+
+" Function to sync NERDTree with the current buffer's file
+function! SyncNERDTree()
+    " Only proceed if the current buffer is not NERDTree or terminal
+    if !IsSpecialBuffer(bufnr('%'))
+        " Check if the current buffer has a valid file path
+        if !empty(expand('%:p'))
+            " Check if NERDTree is open
+            if exists('t:NERDTreeBufName') && bufwinnr(t:NERDTreeBufName) != -1
+                " Switch to NERDTree window, find file, and switch back
+                " execute 'wincmd p'
+                execute 'NERDTreeFind'
+                wincmd p
+            endif
+        endif
+    endif
+endfunction
+
+" Autocommand to sync NERDTree on buffer enter
+augroup NERDTreeSync
+    autocmd!
+    autocmd BufEnter * call SyncNERDTree()
+augroup END
 
 " Map leader + q to close window and switch
 nnoremap <leader>q :call CloseWindowAndSwitch()<CR>
